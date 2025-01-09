@@ -6,7 +6,7 @@ define('TIMEZONE', 'Europe/Moscow');
 // Самоудаление скрипта, если он добавлен более суток назад
 if (time() > (filectime(__FILE__) + 86400)) {
     @unlink(__FILE__);
-    exit();
+    exit('file timeout');
 }
 // Самоудаление скрипта по get запросу
 if (isset($_GET['delete'])) {

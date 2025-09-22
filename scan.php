@@ -1,11 +1,120 @@
 <?php
 /*
-Пожалуйста, не забывайте удалять скрипт, для сохранения безопасности сайта
+
+      Инструкция: https://github.com/vanyokor/scan.php/blob/main/README.md
+    ❗Пожалуйста, не забывайте удалять скрипт, для сохранения безопасности сайта❗
+
 */
 
 // GET параметр, который необходимо передать в скрипт, для его запуска
 define('STARTER', 'run');
 define('TIMEZONE', 'Europe/Moscow');
+
+// исключить из поиска директории
+const IGNORE_DIR = array(
+    './.git',
+    './cgi-bin',
+    './stats',
+    './bitrix/sounds',
+    './bitrix/services',
+    './bitrix/panel',
+    './bitrix/otp',
+    './bitrix/legal',
+    './bitrix/blocks',
+    './bitrix/fonts',
+    './bitrix/themes',
+    './bitrix/gadgets',
+    './bitrix/tmp',
+    './bitrix/backup',
+    './bitrix/images',
+    './bitrix/cache',
+    './bitrix/managed_cache',
+    './bitrix/html_pages',
+    './bitrix/stack_cache',
+    './bitrix/updates',
+    './bitrix/modules',
+    './bitrix/wizards',
+    './upload/resize_cache',
+    './upload/medialibrary',
+    './upload/iblock',
+    './upload/tmp',
+    './upload/uf',
+    './system/storage',
+    './image/cache',
+    './wp-content/cache',
+    './core/cache',
+    './assets/cache',
+    './logs',
+    './cache',
+    './administrator/cache',
+    './wa-cache',
+    './var/cache',
+    './wp-content/plugins/akeebabackupwp/app/tmp',
+);
+
+// исключить из поиска файлы
+const IGNORE_FILE = array(
+    './scan.php',
+);
+
+
+/*
+    Экранирование названия файла
+*/
+function escape_name($name)
+{
+    return htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE);
+}
+
+
+/*
+    Проверка на подходящий для сканирования файл
+*/
+function is_correct_file($file, $onlyphp)
+{
+    if (!in_array($file, IGNORE_FILE)) {
+        if ($onlyphp) {
+            if (substr($file, -4, 4) !== '.php') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
+
+/*
+    Рекурсивное сканирование файлов
+*/
+function scan_recursive($directory, $onlyphp)
+{
+    global $files, $start_time, $interrupted;
+
+    if (is_readable($directory)) {
+        $dir = array_diff(scandir($directory), array('.', '..'));
+        foreach ($dir as $fname) {
+            $filename = $directory.DIRECTORY_SEPARATOR.$fname;
+
+            if (is_link($filename)) {
+                continue;
+            } elseif (is_dir($filename)) {
+                if (!in_array($filename, IGNORE_DIR)) {
+                    scan_recursive($filename, $onlyphp);
+                }
+            } elseif (is_correct_file($filename, $onlyphp)) {
+                $filedate = filemtime($filename);
+                $files[$filedate][] = escape_name($filename);
+            }
+            
+            if ((time() - $start_time) > 55) {
+                $interrupted = true;
+                return;
+            }
+        }
+    }
+}
+
 
 // Самоудаление скрипта, при попытке запуска, через сутки
 if (time() > (filectime(__FILE__) + 86400)) {
@@ -26,113 +135,6 @@ if (isset($_GET['delete'])) {
 if (!isset($_GET[STARTER])) {
     die();
 }
-
-/*
-    Экранирование названия файла
-*/
-function escape_name($name)
-{
-    return htmlspecialchars($name, ENT_QUOTES | ENT_SUBSTITUTE);
-}
-
-
-/*
-    Проверка на подходящий для сканирования файл
-*/
-function is_correct_file($file, $onlyphp)
-{
-    global $ignore_file;
-
-    if (!in_array($file, $ignore_file)) {
-        if ($onlyphp) {
-            if (substr($file, -4, 4) !== '.php') {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    return false;
-}
-
-/*
-    Рекурсивное сканирование файлов
-*/
-function scan_recursive($directory, $onlyphp)
-{
-    global $files, $ignore_dir, $start_time, $interrupted;
-
-    if (is_readable($directory)) {
-        $dir = array_diff(scandir($directory), array('.', '..'));
-        foreach ($dir as $fname) {
-            $filename = $directory.DIRECTORY_SEPARATOR.$fname;
-
-            if (is_link($filename)) {
-                continue;
-            } elseif (is_dir($filename)) {
-                if (!in_array($filename, $ignore_dir)) {
-                    scan_recursive($filename, $onlyphp);
-                }
-            } elseif (is_correct_file($filename, $onlyphp)) {
-                $filedate = filemtime($filename);
-                $files[$filedate][] = escape_name($filename);
-            }
-            
-            if ((time() - $start_time) > 55) {
-                $interrupted = true;
-                return;
-            }
-        }
-    }
-}
-
-
-// исключить из сканирования директории
-$ignore_dir = array(
-    "./.git",
-    "./cgi-bin",
-    "./stats",
-    "./bitrix/sounds",
-    "./bitrix/services",
-    "./bitrix/panel",
-    "./bitrix/otp",
-    "./bitrix/legal",
-    "./bitrix/blocks",
-    "./bitrix/fonts",
-    "./bitrix/themes",
-    "./bitrix/gadgets",
-    "./bitrix/tmp",
-    "./bitrix/backup",
-    "./bitrix/images",
-    "./bitrix/cache",
-    "./bitrix/managed_cache",
-    "./bitrix/html_pages",
-    "./bitrix/stack_cache",
-    "./bitrix/updates",
-    "./bitrix/modules",
-    "./bitrix/wizards",
-    "./upload/resize_cache",
-    "./upload/medialibrary",
-    "./upload/iblock",
-    "./upload/tmp",
-    "./upload/uf",
-    "./system/storage",
-    "./image/cache",
-    "./wp-content/cache",
-    "./core/cache",
-    "./assets/cache",
-    "./logs",
-    "./cache",
-    "./administrator/cache",
-    "./wa-cache",
-    "./var/cache",
-    "./wp-content/plugins/akeebabackupwp/app/tmp",
-);
-
-// исключить из сканирования файлы
-$ignore_file = array(
-    "./scan.php",
-);
 
 // Список найденых файлов
 $files = array();
